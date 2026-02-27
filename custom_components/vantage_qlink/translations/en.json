@@ -6,22 +6,26 @@
     "error": {
       "cannot_connect": "Failed to connect",
       "invalid_auth": "Invalid authentication",
+      "invalid_list": "Invalid list format",
       "unknown": "Unexpected error"
     },
     "step": {
       "user": {
         "data": {
           "host": "Host",
-          "password": "Password",
-          "username": "Username",
-          "vantage_lights": "Lights",
-          "vantage_covers": "Covers"
+          "port": "Port",
+          "vantage_lights": "Lights (comma-separated contractor numbers)",
+          "vantage_covers": "Covers (comma-separated contractor numbers)"
         }
-      },
+      }
+    }
+  },
+  "options": {
+    "step": {
       "init": {
         "data": {
-          "vantage_lights": "Lights",
-          "vantage_covers": "Covers"
+          "vantage_lights": "Lights (comma-separated contractor numbers)",
+          "vantage_covers": "Covers (comma-separated contractor numbers)"
         }
       }
     }
