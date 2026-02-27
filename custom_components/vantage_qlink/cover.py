@@ -22,11 +22,15 @@ async def async_setup_entry(
     """Set up the cover platform."""
 
     client: CommandClient = hass.data[DOMAIN][entry.entry_id]
+
+    # Safely get the covers list — handle None, empty string, whitespace
+    raw_covers = entry.options.get(CONF_COVERS, "")
     current_device_ids = (
-        [item.strip() for item in entry.options.get(CONF_COVERS).split(",")]
-        if entry.options.get(CONF_COVERS, None) is not None
+        [item.strip() for item in raw_covers.split(",") if item.strip()]
+        if raw_covers
         else []
     )
+
     async_add_entities(
         QLinkCover(contractor_number=deviceId, client=client)
         for deviceId in current_device_ids
@@ -37,7 +41,7 @@ async def async_setup_entry(
 
 
 async def remove_unlisted_devices(
-    hass: HomeAssistant, entry: ConfigEntry, current_device_ids: [str]
+    hass: HomeAssistant, entry: ConfigEntry, current_device_ids: list[str]
 ):
     registered_devices = async_entries_for_config_entry(
         get_device_registry(hass), entry.entry_id
@@ -45,11 +49,11 @@ async def remove_unlisted_devices(
     device_registry = get_device_registry(hass)
 
     for device in registered_devices:
-        # Assuming the identifiers tuple contains your service's unique ID
         device_unique_id = next(iter(device.identifiers))[1]
         if (
             device_unique_id.startswith("vantage_cover_")
-            and device_unique_id not in current_device_ids
+            and device_unique_id.replace("vantage_cover_", "")
+            not in current_device_ids
         ):
             device_registry.async_remove_device(device.id)
 
@@ -59,15 +63,15 @@ class QLinkCover(CoverEntity):
 
     def __init__(self, contractor_number: int | str, client: CommandClient) -> None:
         super().__init__()
-        self._contractor_number = (
-            int(contractor_number)
-            if contractor_number.isnumeric()
-            else str(contractor_number)
-        )
+        cn = str(contractor_number).strip()
+        self._contractor_number = int(cn) if cn.isdigit() else cn
         self._client = LoadInterface(client)
 
     async def async_update(self):
-        self._level = await self._client.get_level(self._contractor_number)
+        try:
+            self._level = await self._client.get_level(self._contractor_number)
+        except Exception:
+            pass
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -77,7 +81,7 @@ class QLinkCover(CoverEntity):
             },
             name=f"Load {self._contractor_number}",
             manufacturer="Vantage",
-            model="Load",
+            model="QLink Load",
             serial_number=f"{self._contractor_number}",
         )
 
