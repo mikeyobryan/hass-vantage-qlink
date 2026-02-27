@@ -22,30 +22,29 @@ _LOGGER = logging.getLogger(__name__)
 STEP_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
-        vol.Required(CONF_PORT, description="Port", default=10001): int,
-        vol.Optional(CONF_LIGHTS, description="Lights"): str,
-        vol.Optional(CONF_COVERS, description="Covers"): str,
+        vol.Required(CONF_PORT, description="Port", default=3040): int,
+        vol.Optional(CONF_LIGHTS, default="", description="Lights"): str,
+        vol.Optional(CONF_COVERS, default="", description="Covers"): str,
     }
 )
 
 
 async def validate_connection(host, port):
+    """Validate we can connect to the QLink system."""
     async with CommandClient(host, port, conn_timeout=5) as client:
-        await client.command("VER")
+        await client.command("VGV")
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
-    Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
+    Data has the keys from STEP_DATA_SCHEMA with values provided by the user.
     """
-
     try:
         await validate_connection(data[CONF_HOST], data[CONF_PORT])
-    except:  # noqa: E722
-        raise CannotConnect  # noqa: B904
-
-    return
+    except Exception as err:
+        _LOGGER.error("Failed to connect to Vantage QLink: %s", err)
+        raise CannotConnect from err
 
 
 class ConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -66,20 +65,22 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
-            try:
+            if not errors:
+                # Use .get() with defaults so Optional fields never cause KeyError
+                lights = user_input.get(CONF_LIGHTS, "")
+                covers = user_input.get(CONF_COVERS, "")
+
                 return self.async_create_entry(
-                    title=f"Vanatage QLink {user_input[CONF_HOST]}",
+                    title=f"Vantage QLink {user_input[CONF_HOST]}",
                     data={
                         CONF_HOST: user_input[CONF_HOST],
                         CONF_PORT: user_input[CONF_PORT],
                     },
                     options={
-                        CONF_LIGHTS: user_input[CONF_LIGHTS],
-                        CONF_COVERS: user_input[CONF_COVERS],
+                        CONF_LIGHTS: lights,
+                        CONF_COVERS: covers,
                     },
                 )
-            except Exception as e:
-                errors["base"] = "invalid_list"
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_DATA_SCHEMA, errors=errors
@@ -98,18 +99,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         errors = {}
         if user_input is not None:
-            try:
-                return self.async_create_entry(
-                    title=self.config_entry.title,
-                    data=self.config_entry.data,
-                    options={
-                        CONF_LIGHTS: user_input[CONF_LIGHTS],
-                        CONF_COVERS: user_input[CONF_COVERS],
-                    },
-                )
-            except Exception as e:
-                errors["base"] = "invalid_list"
-            return self.async_create_entry(title="", data=user_input)
+            lights = user_input.get(CONF_LIGHTS, "")
+            covers = user_input.get(CONF_COVERS, "")
+
+            return self.async_create_entry(
+                title="",
+                data={
+                    CONF_LIGHTS: lights,
+                    CONF_COVERS: covers,
+                },
+            )
 
         # Pre-fill the form with the existing options
         options = self.config_entry.options
