@@ -4,11 +4,12 @@
   "codeowners": ["@bassrock"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://www.home-assistant.io/integrations/vantage_qlink",
+  "documentation": "https://github.com/bassrock/hass-vantage-qlink",
   "homekit": {},
   "iot_class": "local_polling",
   "requirements": [],
   "ssdp": [],
   "zeroconf": [],
-  "version": "0.0.1"
+  "version": "0.1.0"
 }
+
